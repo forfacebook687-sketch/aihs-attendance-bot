@@ -338,42 +338,276 @@ def save_attendance_to_sheet(subject, date_str, present_names):
         print(f"❌ Sheet error: {e}")
         return False
 
+# ── TIMETABLE (day-specific) ──
+# Two timetables: "ramadan" (shorter timings) and "regular" (normal timings)
+# Switch by changing ACTIVE_TIMETABLE below
+
+ACTIVE_TIMETABLE = "ramadan"   # change to "regular" after Ramadan ends
+
+# Subject name in timetable → Google Sheet tab name
+SUBJECT_MAP = {
+    "Pharmacology & Therapeutics-I A": "Pharmacology-I",
+    "Pharmaceutics-II A":              "Pharmaceutics-I",
+    "Microbiology & Immunology":       "Microbiology",
+    "Microbiology & Immunology Lab":   "Microbiology Lab",
+    "Pharmacognosy-I A":               "Pharmacognosy-I",
+    "Pharmacognosy-I A LAB":           "Pharmacognosy-I LAB",
+    "Pharmaceutical Mathematics":      "Maths",
+    "Islamic Studies":                 "Islamic Studies",
+}
+
+# day index: 0=Monday, 1=Tuesday, 2=Wednesday, 3=Thursday, 4=Friday
+TIMETABLE = {
+    "ramadan": {
+        0: [  # Monday
+            {"time": "10:00-11:00", "subject": "Pharmacology & Therapeutics-I A", "room": "LH 1", "teacher": "Miss Khadija Ijaz",    "type": "THR"},
+            {"time": "11:30-12:30", "subject": "Microbiology & Immunology",        "room": "LH 1", "teacher": "Miss Khadija Ijaz",    "type": "THR"},
+            {"time": "12:30-1:30",  "subject": "Pharmaceutical Mathematics",       "room": "LH 1", "teacher": "Mr. Anwar ul Mehmood", "type": "THR"},
+        ],
+        1: [  # Tuesday
+            {"time": "9:00-10:00",  "subject": "Pharmaceutics-II A",               "room": "LH 1", "teacher": "Miss Ushna Ejaz",      "type": "THR"},
+            {"time": "10:00-11:00", "subject": "Pharmacology & Therapeutics-I A",  "room": "LH 1", "teacher": "Miss Khadija Ijaz",    "type": "THR"},
+            {"time": "11:30-12:30", "subject": "Pharmacognosy-I A",                "room": "LH 1", "teacher": "Miss Sabina Nazish",   "type": "THR"},
+            {"time": "12:30-1:30",  "subject": "Pharmaceutical Mathematics",       "room": "LH 1", "teacher": "Mr. Anwar ul Mehmood", "type": "THR"},
+        ],
+        2: [  # Wednesday
+            {"time": "9:00-10:00",  "subject": "Microbiology & Immunology Lab",    "room": "BMS Lab","teacher": "Miss Khadija Ijaz",   "type": "LAB"},
+            {"time": "10:00-11:00", "subject": "Pharmacognosy-I A",                "room": "LH 1", "teacher": "Miss Sabina Nazish",   "type": "THR"},
+            {"time": "11:30-12:30", "subject": "Pharmacology & Therapeutics-I A",  "room": "BMS Lab","teacher": "Miss Khadija Ijaz",   "type": "LAB"},
+            {"time": "12:30-1:30",  "subject": "Islamic Studies",                  "room": "LH 1", "teacher": "Mr. Muhammad Farooq",  "type": "THR"},
+        ],
+        3: [  # Thursday
+            {"time": "9:00-10:00",  "subject": "Microbiology & Immunology",        "room": "LH 1", "teacher": "Miss Khadija Ijaz",    "type": "THR"},
+            {"time": "10:00-11:00", "subject": "Pharmaceutics-II A",               "room": "LH 1", "teacher": "Miss Ushna Ejaz",      "type": "THR"},
+            {"time": "12:30-1:30",  "subject": "Islamic Studies",                  "room": "LH 1", "teacher": "Mr. Muhammad Farooq",  "type": "THR"},
+        ],
+        4: [  # Friday
+            {"time": "9:00-10:00",  "subject": "Pharmaceutics-II A",               "room": "Pharmaceutics Lab","teacher": "Miss Ushna Ejaz",   "type": "LAB"},
+            {"time": "10:00-11:00", "subject": "Pharmacognosy-I A LAB",            "room": "Pharmacognosy Lab","teacher": "Miss Sabina Nazish","type": "LAB"},
+        ],
+    },
+    "regular": {
+        0: [  # Monday
+            {"time": "10:15-11:40", "subject": "Pharmacology & Therapeutics-I A", "room": "LH 1", "teacher": "Miss Khadija Ijaz",    "type": "THR"},
+            {"time": "12:10-1:35",  "subject": "Microbiology & Immunology",        "room": "LH 1", "teacher": "Miss Khadija Ijaz",    "type": "THR"},
+            {"time": "1:35-3:00",   "subject": "Pharmaceutical Mathematics",       "room": "LH 1", "teacher": "Mr. Anwar ul Mehmood", "type": "THR"},
+        ],
+        1: [  # Tuesday
+            {"time": "8:50-10:15",  "subject": "Pharmaceutics-II A",               "room": "LH 1", "teacher": "Miss Ushna Ejaz",      "type": "THR"},
+            {"time": "10:15-11:40", "subject": "Pharmacology & Therapeutics-I A",  "room": "LH 1", "teacher": "Miss Khadija Ijaz",    "type": "THR"},
+            {"time": "12:10-1:35",  "subject": "Pharmacognosy-I A",                "room": "LH 1", "teacher": "Miss Sabina Nazish",   "type": "THR"},
+            {"time": "1:35-3:00",   "subject": "Pharmaceutical Mathematics",       "room": "LH 1", "teacher": "Mr. Anwar ul Mehmood", "type": "THR"},
+        ],
+        2: [  # Wednesday
+            {"time": "8:50-10:15",  "subject": "Microbiology & Immunology Lab",    "room": "BMS Lab","teacher": "Miss Khadija Ijaz",   "type": "LAB"},
+            {"time": "10:15-11:40", "subject": "Pharmacognosy-I A",                "room": "LH 1", "teacher": "Miss Sabina Nazish",   "type": "THR"},
+            {"time": "12:10-1:35",  "subject": "Pharmacology & Therapeutics-I A",  "room": "BMS Lab","teacher": "Miss Khadija Ijaz",   "type": "LAB"},
+            {"time": "1:35-3:00",   "subject": "Islamic Studies",                  "room": "LH 1", "teacher": "Mr. Muhammad Farooq",  "type": "THR"},
+        ],
+        3: [  # Thursday
+            {"time": "8:50-10:15",  "subject": "Microbiology & Immunology",        "room": "LH 1", "teacher": "Miss Khadija Ijaz",    "type": "THR"},
+            {"time": "10:15-11:40", "subject": "Pharmaceutics-II A",               "room": "LH 1", "teacher": "Miss Ushna Ejaz",      "type": "THR"},
+            {"time": "1:35-3:00",   "subject": "Islamic Studies",                  "room": "LH 1", "teacher": "Mr. Muhammad Farooq",  "type": "THR"},
+        ],
+        4: [  # Friday
+            {"time": "8:50-10:15",  "subject": "Pharmaceutics-II A",               "room": "Pharmaceutics Lab","teacher": "Miss Ushna Ejaz",   "type": "LAB"},
+            {"time": "10:15-11:40", "subject": "Pharmacognosy-I A LAB",            "room": "Pharmacognosy Lab","teacher": "Miss Sabina Nazish","type": "LAB"},
+        ],
+    }
+}
+
+def generate_dar(date_str):
+    """Pull attendance from Google Sheet and build DAR summary for the correct day."""
+    try:
+        client = get_sheet_client()
+        if not client:
+            return "❌ Could not connect to Google Sheet."
+
+        spreadsheet = client.open_by_key(SPREADSHEET_ID)
+        total = len(STUDENTS)
+
+        # Parse date
+        try:
+            parts = date_str.replace("-", "/").split("/")
+            d, m = int(parts[0]), int(parts[1])
+            year  = int(parts[2]) if len(parts) > 2 else datetime.now().year
+            months_short = ["","Jan","Feb","Mar","Apr","May","Jun",
+                            "Jul","Aug","Sep","Oct","Nov","Dec"]
+            day_names = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"]
+            date_obj  = datetime(year, m, d)
+            day_idx   = date_obj.weekday()  # 0=Mon, 6=Sun
+            day_name  = day_names[day_idx]
+            display_date = f"{d:02d} {months_short[m]} {year}"
+        except Exception as e:
+            return f"❌ Could not parse date '{date_str}'. Use format DD/MM e.g. 06/03"
+
+        # Get today's schedule
+        schedule = TIMETABLE[ACTIVE_TIMETABLE].get(day_idx, [])
+
+        lines = [
+            f"📋 *AIHS — Daily Activity Report*",
+            f"🏫 *Askari Institute of Health Sciences*",
+            f"📅 *{day_name}, {display_date}*",
+            f"📚 Pharm-D Semester 3 | {'🌙 Ramadan Timing' if ACTIVE_TIMETABLE == 'ramadan' else '🕐 Regular Timing'}",
+            f"━━━━━━━━━━━━━━━━━━━━━━",
+        ]
+
+        if day_idx >= 5:
+            lines.append("🏖️ No classes scheduled (Weekend)")
+            return "\n".join(lines)
+
+        if not schedule:
+            lines.append("📭 No classes scheduled for this day.")
+            return "\n".join(lines)
+
+        any_data = False
+        for slot in schedule:
+            timetable_name = slot["subject"]
+            sheet_name     = SUBJECT_MAP.get(timetable_name, timetable_name)
+            label          = f"{timetable_name} ({'LAB' if slot['type'] == 'LAB' else 'THR'})"
+
+            try:
+                sheet   = spreadsheet.worksheet(sheet_name)
+                headers = sheet.row_values(2)
+
+                if date_str in headers:
+                    col_idx  = headers.index(date_str) + 1
+                    col_vals = sheet.col_values(col_idx)[2:]
+                    present  = col_vals.count("P")
+                    absent   = total - present
+                    pct      = round(present / total * 100) if total > 0 else 0
+                    flag     = "🔴" if pct < 75 else "🟢"
+                    lines.append(
+                        f"\n{flag} *{label}*\n"
+                        f"   🕐 {slot['time']}  |  📍 {slot['room']}\n"
+                        f"   👩‍🏫 {slot['teacher']}\n"
+                        f"   ✅ Present: {present}  ❌ Absent: {absent}  ({pct}%)"
+                    )
+                    any_data = True
+                else:
+                    lines.append(
+                        f"\n⚪ *{label}*\n"
+                        f"   🕐 {slot['time']}  |  📍 {slot['room']}\n"
+                        f"   ⚠️ Not recorded yet"
+                    )
+
+            except gspread.WorksheetNotFound:
+                lines.append(
+                    f"\n⚪ *{label}*\n"
+                    f"   🕐 {slot['time']}  |  📍 {slot['room']}\n"
+                    f"   ⚠️ Not recorded yet"
+                )
+            except Exception as e:
+                lines.append(f"\n⚠️ *{label}* — Error: {e}")
+
+        lines.append(f"\n━━━━━━━━━━━━━━━━━━━━━━")
+        lines.append(f"👥 Total Students: {total}")
+        if any_data:
+            lines.append("🟢 ≥75%  🔴 <75% attendance")
+        else:
+            lines.append("⚠️ No attendance recorded for this date yet.")
+        lines.append("_Prepared by: AIHS Attendance Bot_")
+
+        return "\n".join(lines)
+
+    except Exception as e:
+        return f"❌ DAR generation failed: {e}"
+
 # ── GEMINI IMAGE ANALYSIS ──
 def analyze_attendance_image(image_url, subject, date_str):
     try:
-        img_data = requests.get(
-            image_url, auth=(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
-        ).content
+        # Download image from Twilio
+        img_response = requests.get(
+            image_url, auth=(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN), timeout=30
+        )
+        img_data = img_response.content
+        content_type = img_response.headers.get("Content-Type", "image/jpeg")
+
+        # Determine mime type
+        if "png" in content_type:
+            mime_type = "image/png"
+        elif "webp" in content_type:
+            mime_type = "image/webp"
+        else:
+            mime_type = "image/jpeg"
+
+        print(f"Image downloaded: {len(img_data)} bytes, type: {mime_type}")
 
         model = genai.GenerativeModel("gemini-1.5-flash")
         student_list = "\n".join([f"{s['roll']} - {s['name']}" for s in STUDENTS])
 
-        prompt = f"""You are reading a handwritten attendance register for a Pharm-D class.
+        prompt = f"""You are reading an attendance register for a Pharm-D class at AIHS Rawalpindi.
 
 Subject: {subject}
 Date: {date_str}
+Total students: {len(STUDENTS)}
 
-Student list:
+Complete student list (Roll No - Name):
 {student_list}
 
-Identify PRESENT (P / tick / checkmark) and ABSENT (A / cross / blank) students.
+Look at the register image carefully. Each student has a status column showing P (present) or A (absent).
 
-Return ONLY valid JSON:
-{{
-  "present": ["ABDUL REHMAN", "SAKIA KANWAL"],
-  "absent": ["MADIHA BEGUM"],
-  "notes": "any issues reading the register"
-}}
+Your task:
+1. Find each student's attendance status
+2. Return a JSON object with two lists: "present" and "absent"
 
-Use EXACT names from the student list. Do not invent names."""
+IMPORTANT RULES:
+- Use the EXACT student names from the list above
+- If you cannot clearly read a student's status, assume PRESENT
+- Do not add any extra text outside the JSON
+
+Return ONLY this JSON format, nothing else:
+{{"present": ["STUDENT NAME 1", "STUDENT NAME 2"], "absent": ["STUDENT NAME 3"], "notes": "brief note if any issue"}}"""
 
         response = model.generate_content([
             prompt,
-            {"mime_type": "image/jpeg", "data": img_data}
+            {"mime_type": mime_type, "data": img_data}
         ])
 
-        match = re.search(r'\{.*\}', response.text.strip(), re.DOTALL)
-        return json.loads(match.group()) if match else None
+        raw = response.text.strip()
+        print(f"Gemini raw response: {raw[:300]}")
+
+        # Try multiple JSON extraction methods
+        # Method 1: direct parse
+        try:
+            return json.loads(raw)
+        except:
+            pass
+
+        # Method 2: extract JSON block
+        match = re.search(r'\{.*?\}', raw, re.DOTALL)
+        if match:
+            try:
+                return json.loads(match.group())
+            except:
+                pass
+
+        # Method 3: find largest JSON block
+        matches = re.findall(r'\{[^{}]*\}', raw, re.DOTALL)
+        for m in sorted(matches, key=len, reverse=True):
+            try:
+                result = json.loads(m)
+                if "present" in result or "absent" in result:
+                    return result
+            except:
+                continue
+
+        # Method 4: manually extract present/absent lists
+        present_match = re.search(r'"present"\s*:\s*\[(.*?)\]', raw, re.DOTALL)
+        absent_match  = re.search(r'"absent"\s*:\s*\[(.*?)\]',  raw, re.DOTALL)
+        if present_match or absent_match:
+            def parse_list(m):
+                if not m: return []
+                items = re.findall(r'"([^"]+)"', m.group(1))
+                return items
+            return {
+                "present": parse_list(present_match),
+                "absent":  parse_list(absent_match),
+                "notes":   "Parsed with fallback method"
+            }
+
+        print(f"Could not parse JSON from: {raw}")
+        return None
 
     except Exception as e:
         print(f"Gemini error: {e}")
@@ -434,13 +668,30 @@ def webhook():
             except Exception:
                 msg.body(reply)
         else:
-            msg.body("❌ Could not read the register. Please send a clearer photo.")
+            msg.body("❌ Could not read the register. Try:\n• Better lighting\n• Hold camera steady\n• Make sure all names are visible\n• Send as photo not PDF")
+
+    elif incoming_msg.lower().startswith("dar"):
+        date_match = re.search(r'(\d{1,2}[/\-]\d{1,2}(?:[/\-]\d{2,4})?)', incoming_msg)
+        date_str   = date_match.group(1) if date_match else datetime.now().strftime("%d/%m/%Y")
+        msg.body(f"⏳ Generating DAR for {date_str}...")
+        dar_text = generate_dar(date_str)
+        try:
+            Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN).messages.create(
+                body=dar_text, from_=TWILIO_WA_NUMBER, to=sender
+            )
+            return "", 204
+        except Exception:
+            msg.body(dar_text)
 
     elif incoming_msg.lower() in ["hi", "hello", "help"]:
         msg.body(
             "👋 *AIHS Attendance Bot — PDS24 S3*\n\n"
-            "Send a photo of the register with subject + date as caption.\n\n"
-            "*Example:* Pharmacology 06/03\n\n"
+            "*📸 Record Attendance:*\n"
+            "Send a register photo with subject + date as caption.\n"
+            "_Example: Pharmacology 06/03_\n\n"
+            "*📋 Get DAR:*\n"
+            "Type: *DAR 06/03*\n"
+            "Or just *DAR* for today's report\n\n"
             "*Available subjects:*\n"
             "• Pharmacology-I\n• Pharmacognosy-I\n• Pharmaceutics-I\n"
             "• Microbiology\n• Islamic Studies\n• Maths\n"
