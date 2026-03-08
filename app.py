@@ -1,3 +1,28 @@
+# =============================================================================
+# app.py — AIHS Attendance Bot
+# Askari Institute of Health Sciences, Rawalpindi
+# Pharm-D Semester 3 | PDS24 | Fall 2024
+#
+# This is the main application file for the AIHS WhatsApp Attendance Bot.
+# It runs a Flask web server that receives WhatsApp messages via a Twilio
+# webhook. When a teacher sends a photo of the paper attendance register,
+# the bot uses Google Gemini (AI vision) to read the register and identify
+# which of the 44 students are present or absent. The results are then saved
+# to a Google Sheet (one tab per subject) with attendance totals, percentages,
+# and conditional formatting applied automatically.
+#
+# Key features:
+#   - Image-based attendance parsing via Gemini 1.5 Flash
+#   - Google Sheets integration (auto-formats, formulas, freeze panes)
+#   - DAR (Daily Activity Report) command for day-level summaries
+#   - Dual timetable support: Ramadan timings vs Regular timings
+#   - WhatsApp reply with absent student list after each submission
+#
+# Environment variables required:
+#   TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WA_NUMBER,
+#   GEMINI_API_KEY, GOOGLE_CREDS_JSON
+# =============================================================================
+
 import os
 import json
 import re
